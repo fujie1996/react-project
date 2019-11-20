@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+
+<body>
+  <button id="btn1">按钮1</button>
+  <button id="btn2">按钮2</button>
+  <button id="btn3">按钮3</button>
+  <script src="https://cdn.bootcss.com/axios/0.19.0/axios.min.js"></script>
+  <script>
+    const btn1 = document.getElementById('btn1')
+    const btn2 = document.getElementById('btn2')
+    const btn3 = document.getElementById('btn3')
+
+    let token = '';
+
+    const axiosInstance = axios.create({
+      baseURL: 'http://localhost:5000/api',
+      timeout: 10000,
+      headers: {
+
+      }
+    })
+
+    // 请求拦截器：在axios发送请求之前出发的拦截器回调函数
+    axiosInstance.interceptors.request.use(
+      // 成功发送请求，触发回调函数
+      (config) => {
+        // 功能：修改请求信息
+        if (config.method === 'post') {
+          config.headers['content-type'] = 'application/x-www-form-urlencoded';
+          config.data = Object.keys(config.data).reduce((prev, key) => {
+            const value = config.data[key];
+            return prev + `&${key}=${value}`;
+          }, '').substring(1);
+        }
+        if (token) {
+          config.headers.authorization = 'Bearer ' + token;
+        }
+
+        return config;
+      },
+    )
+
+    //响应拦截器
+    axiosInstance.interceptors.response.use(
+      // 响应成功出发回调函数
+      (response) => {
+        if (response.data.status === 0) {
+          return (response.data.data);
+        } else {
+          alert(response.data.msg)
+          return Promise.reject(response.data.msg);
+        }
+      },
+      (error) => {
+        // 定义一个codeMessasge
+        const codeMessage = {
+          401: '没有权限访问接口',
+          403: '禁止访问',
+          404: '资源不存在',
+          500: '哇哦，故障了，请联系管理员~'
+        }
+
+        let errorMessage = '';
+
+        if (error.response) {
+          // 说明服务器返回了响应
+          errorMessage = codeMessage[error.response.status] || '未知错误';
+        } else {
+          // 说明服务器没有返回响应，请求还没给服务器 / 还没有接受到服务器的响应 请求就终止了
+          if (error.message.indexOf('Network Error') !== -1) {
+            errorMessage = '请检查网络连接';
+          } else if (error.message.indexOf('timeout') !== -1) {
+            errorMessage = '网络太卡了，请连上wifi重试';
+          } else {
+            errorMessage = '未知错误';
+          }
+        }
+        // console.dir(error);
+        alert(errorMessage);
+        return Promise.reject(errorMessage);
+      }
+    )
+
+    btn1.onclick = function () {
+      axiosInstance({
+        method: 'POST',
+        url: '/login',
+        data: {
+          username: 'admin',
+          password: 'admin'
+        },
+        // data: 'username=admin&password=admin',
+        // headers: {
+        //   'content-type': 'application/x-www-form-urlencoded'
+        // }
+      })
+        .then((response) => {
+          if (response.data.status === 0) {
+            // 登录成功
+            console.log(response.data.data);
+
+            token = response.data.data.token
+
+          } else {
+            // 登陆失败
+            alert(response.data.msg);
+          }
+        })
+        .catch((error) => {
+          console.log(error);
+          alert('网络出错');
+        })
+    }
+
+    btn2.onclick = function () {
+      axiosInstance({
+        method: 'GET',
+        url: '/category/get',
+        // headers: {
+        //   authorization: 'Bearer ' + token
+        // }
+      })
+        .then((response) => {
+          if (response.data.status === 0) {
+            console.log(response.data.data);
+          } else {
+            alert(response.data.msg);
+          }
+        })
+        .catch((error) => {
+          console.log(error);
+          alert('网络错误');
+        })
+    }
+
+    btn3.onclick = function () {
+      axiosInstance({
+        method: 'POST',
+        url: '/category/add',
+        // data: 'categoryName=鼠标',
+        data: {
+          categoryName: '鼠标',
+        }
+        // headers: {
+        //   'content-type': 'application/x-www-form-urlencoded',
+        //   authorization: 'Bearer ' + token
+        // }
+      })
+        .then((response) => {
+          if (response.data.status === 0) {
+            console.log(response.data.data);
+
+          } else {
+            alert(response.data.msg)
+          }
+        })
+        .catch((error) => {
+          console.log(error);
+          alert('网络出错')
+
+        })
+    }
+  </script>
+</body>
+
+</html>
